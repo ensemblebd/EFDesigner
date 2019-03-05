@@ -72,7 +72,11 @@ bool IsAspNetCoreIdentity() {return true;} // todo:   ModelRoot.IsNetCoreIdentit
 String IdentityUserImpl = "ApplicationUser";// todo:   ModelRoot.IdentityUserClass (exposed property)
 String IdentityRoleImpl = "ApplicationRole";// todo:   ModelRoot.IdentityRoleClass (exposed property)
 String IdentityTKey = "int";// todo:   ModelRoot.IdentityPreferredKeyType (exposed property)
-
+String IdentityUserClaimImpl = "ApplicationUserClaim";
+String IdentityUserRoleImpl = "ApplicationUserRole";
+String IdentityUserLoginImpl = "ApplicationUserLogin";
+String IdentityRoleClaimImpl = "ApplicationRoleClaim";
+String IdentityUserTokenImpl = "ApplicationUserToken";
 #endregion
 
 

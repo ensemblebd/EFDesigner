@@ -132,8 +132,27 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
    {
       Output("/// <inheritdoc/>");
    }
+   
+   // build the sequence for IdentityDbContext<T,..>.   Constructors allow for only two variations, with which all TClass overrides must be specified. It's an all or nothing scenario, with two approaches (basic, and full)
+   List<String> t_overrides = new List<String>();
+   if (!String.IsNullOrEmpty(IdentityUserImpl) && !String.IsNullOrEmpty(IdentityRoleImpl) && !String.IsNullOrEmpty(IdentityTKey)) {
+	  t_overrides.Add(IdentityUserImpl);
+	  t_overrides.Add(IdentityRoleImpl);
+	  t_overrides.Add(IdentityTKey);
 
-   String inherit_from =  (IsAspNetCoreIdentity()?$"IdentityDbContext<{IdentityUserImpl},{IdentityRoleImpl},{IdentityTKey}>":"Microsoft.EntityFrameworkCore.DbContext");
+	  if (!String.IsNullOrEmpty(IdentityUserClaimImpl) && !String.IsNullOrEmpty(IdentityUserRoleImpl) && !String.IsNullOrEmpty(IdentityUserLoginImpl) && !String.IsNullOrEmpty(IdentityRoleClaimImpl) && !String.IsNullOrEmpty(IdentityUserTokenImpl)) {
+		t_overrides.Add(IdentityUserClaimImpl);
+		t_overrides.Add(IdentityUserRoleImpl);
+		t_overrides.Add(IdentityUserLoginImpl);
+		t_overrides.Add(IdentityRoleClaimImpl);
+		t_overrides.Add(IdentityUserTokenImpl);
+	  }
+   }
+   String built_t_overrides = "";
+   if (t_overrides.Count > 0) {
+      built_t_overrides = "<"+String.Join(",",t_overrides.ToArray())+">";
+   }
+   String inherit_from =  (IsAspNetCoreIdentity()?$"IdentityDbContext{built_t_overrides}":"Microsoft.EntityFrameworkCore.DbContext");
    
    Output($"{modelRoot.EntityContainerAccess.ToString().ToLower()} partial class {modelRoot.EntityContainerName} : {inherit_from}");
    Output("{");
