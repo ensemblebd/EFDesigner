@@ -109,6 +109,9 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
    Output("using System.Linq;");
    Output("using System.ComponentModel.DataAnnotations.Schema;");
    Output("using Microsoft.EntityFrameworkCore;");
+   if (IsAspNetCoreIdentity()) {
+      Output("using Microsoft.AspNetCore.Identity.EntityFrameworkCore;");
+   }
    NL();
 
    BeginNamespace(modelRoot.Namespace);
@@ -130,7 +133,9 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
       Output("/// <inheritdoc/>");
    }
 
-   Output($"{modelRoot.EntityContainerAccess.ToString().ToLower()} partial class {modelRoot.EntityContainerName} : Microsoft.EntityFrameworkCore.DbContext");
+   String inherit_from =  (IsAspNetCoreIdentity()?$"IdentityDbContext<{IdentityUserImpl},{IdentityRoleImpl},{IdentityTKey}>":"Microsoft.EntityFrameworkCore.DbContext");
+   
+   Output($"{modelRoot.EntityContainerAccess.ToString().ToLower()} partial class {modelRoot.EntityContainerName} : {inherit_from}");
    Output("{");
 
    PluralizationService pluralizationService = ModelRoot.PluralizationService;
@@ -162,6 +167,9 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
       {
          string dbSetName;
 
+		 // don't output dbsets for already-included sets via base class of Identity.
+		 if (isIdentityModel(modelClass.Name) || isIdentityBase(modelClass.Name)) continue;
+		 
          if (!string.IsNullOrEmpty(modelClass.DbSetName))
             dbSetName = modelClass.DbSetName;
          else 
@@ -208,10 +216,14 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
    Output("/// <inheritdoc />");
    Output($"public {modelRoot.EntityContainerName}(DbContextOptions<{modelRoot.EntityContainerName}> options) : base(options)");
    Output("{");
+   Output("CustomCreate(options);");
    Output("}");
    NL();
    
    Output("partial void CustomInit(DbContextOptionsBuilder optionsBuilder);");
+   NL();
+   // added to support Owin context creation.. Cause err body loves Owen Wilson? :o 
+   Output($"partial void CustomCreate(DbContextOptions<{modelRoot.EntityContainerName}> options);");
    NL();
 
    Output("/// <inheritdoc />");
@@ -267,6 +279,11 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
 
    foreach (ModelClass modelClass in modelRoot.Classes.OrderBy(x => x.Name))
    {
+	  // don't output ef6 correlations for already-included items via base class of Identity.  
+	  if (isIdentityBase(modelClass.Name)) continue;
+	  // also respect developer wishes to override generator and use custom correlations of their design.
+	  if (shouldDisableModelImpl(modelClass.Name)) continue;
+	  
       segments.Clear();
       foreignKeyColumns.Clear();
       NL();
@@ -305,6 +322,7 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
 	  // indexed properties
       foreach (ModelAttribute indexed in modelClass.Attributes.Where(x => x.Indexed && !x.IsIdentity))
       {
+
          segments.Clear();
          segments.Add($"modelBuilder.Entity<{modelClass.FullName}>().HasIndex(t => t.{indexed.Name})");
          if (indexed.IndexedUnique) segments.Add("IsUnique()");
