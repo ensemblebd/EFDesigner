@@ -26,7 +26,8 @@ List<String> IdentityBaseTypes = new List<String>(){
 List<String> IdentityBaseTypesWithoutPrimary = new List<String>(){
 	"IdentityUserLogin",
 	"IdentityUserRole",
-	"IdentityUserToken"
+	"IdentityUserToken",
+	"IdentityUserLogin"
 };
 List<String> IdentitySubTypes = new List<String>(){
 	"ApplicationRole",
@@ -44,6 +45,12 @@ List<String> IdentitySubTypesDisableModelImpl = new List<String>(){
 	"ApplicationGroupRole",
 	"ApplicationUserGroup"
 };
+
+enum EIdentityGenerateStrategy {
+	INHERITANCE_ONLY, // Don't output anything except class def
+	OVERRIDE_PROPS // output properties as override (may cause issues for some properties, and may demand user to provision default values via Init() partial on derived class)
+}
+EIdentityGenerateStrategy IdentityGenerateStrategy = EIdentityGenerateStrategy.INHERITANCE_ONLY; // todo:    ModelRoot.IdentityGenerateStrategy - MEF dropdown option at root level
 
 bool isIdentityBase(String name) { // todo:   ModelClass.IsIdentity (exposed property)
    return IdentityBaseTypes.Any(x=> x.EndsWith(name, StringComparison.OrdinalIgnoreCase));
@@ -363,17 +370,18 @@ void WriteClass(ModelClass modelClass)
    Output($"public {isAbstract}partial class {modelClass.Name}{baseClass}");
    Output("{");
 
-   if (!b_isIdentityBase) {
-	  WriteConstructor(modelClass, b_isIdentityModel, b_desiresPublicAccess);
-   }
-   WritePersistentProperties(modelClass, b_isIdentityBase);
-   if (!b_isIdentityBase) {
-      WriteCalculatedProperties(modelClass);
-      WritePersistentNavigationProperties(modelClass, true);
-      WriteCalculatedNavigationProperties(modelClass);
-      WriteNotifyPropertyChanged(modelClass);
-   }
-
+   if (!b_isIdentityBase || b_isIdentityBase && IdentityGenerateStrategy != EIdentityGenerateStrategy.INHERITANCE_ONLY) {
+	   if (!b_isIdentityBase) {
+		  WriteConstructor(modelClass, b_isIdentityModel, b_desiresPublicAccess);
+	   }
+	   WritePersistentProperties(modelClass, b_isIdentityBase);
+	   if (!b_isIdentityBase) {
+		  WriteCalculatedProperties(modelClass);
+		  WritePersistentNavigationProperties(modelClass, true);
+		  WriteCalculatedNavigationProperties(modelClass);
+		  WriteNotifyPropertyChanged(modelClass);
+	   }
+	}
    Output("}");
 
    EndNamespace(modelClass.Namespace);
@@ -591,7 +599,7 @@ void WriteConstructor(ModelClass modelClass, bool b_isIdentityModel, bool b_desi
          if (!AllSuperclassesAreNullOrAbstract(modelClass))
          {
             List<string> superclassRequiredParameters = GetRequiredParameters(modelClass.Superclass);
-            if (!requiredParameters.Except(superclassRequiredParameters).Any())
+            if (!b_isIdentityModel && !requiredParameters.Except(superclassRequiredParameters).Any())
                newToken = "new " ;
          }
          

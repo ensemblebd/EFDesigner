@@ -211,6 +211,7 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
    Output("/// <inheritdoc />");
    Output($"public {modelRoot.EntityContainerName}() : base()");
    Output("{");
+   Output("CustomConstruct();");
    Output("}");
    NL();
    Output("/// <inheritdoc />");
@@ -224,6 +225,9 @@ void WriteDbContextEFCore(ModelRoot modelRoot)
    NL();
    // added to support Owin context creation.. Cause err body loves Owen Wilson? :o 
    Output($"partial void CustomCreate(DbContextOptions<{modelRoot.EntityContainerName}> options);");
+   NL();
+   // support for DBContext Initializer via constructor (standard)
+   Output($"partial void CustomConstruct();");
    NL();
 
    Output("/// <inheritdoc />");
